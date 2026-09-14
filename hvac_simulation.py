@@ -44,7 +44,7 @@ class HVACConfig:
 
     # Outdoor temperature fallback, used only if no outdoor-temperature
     # column is supplied.
-    fallback_outdoor_temp_c: float = 25.0
+    fallback_outdoor_temp_c: float = 27.0
 
     # 1R1C building parameters -- PROTOTYPE VALUES.
     # These must be calibrated against the real room before any energy
@@ -129,6 +129,24 @@ def scheduled_enable(timestamp, cfg: HVACConfig):
     if cfg.schedule_weekdays_only and timestamp.weekday() >= 5:
         return False
     return cfg.schedule_start_hour <= hour_decimal < cfg.schedule_end_hour
+
+
+def working_hours_mask(timestamp: pd.Series, cfg: HVACConfig) -> pd.Series:
+    """
+    Vectorised version of scheduled_enable()'s window, for filtering a
+    results DataFrame down to the working-hours window (cfg.schedule_start_hour
+    to cfg.schedule_end_hour, weekdays only if cfg.schedule_weekdays_only).
+
+    Used by calculate_kpis() so KPIs reflect working hours only, regardless
+    of which strategy ('scheduled' or 'predictive') actually controlled the
+    HVAC at any given timestep.
+    """
+    timestamp = pd.to_datetime(timestamp)
+    hour_decimal = timestamp.dt.hour + timestamp.dt.minute / 60
+    mask = (hour_decimal >= cfg.schedule_start_hour) & (hour_decimal < cfg.schedule_end_hour)
+    if cfg.schedule_weekdays_only:
+        mask &= timestamp.dt.weekday < 5
+    return mask
 
 
 def forecast_1r1c_temperature(
@@ -390,6 +408,26 @@ def run_1r1c_strategy(sim_data: pd.DataFrame, strategy_name: str, cfg: HVACConfi
 
 
 def calculate_kpis(result_df: pd.DataFrame, cfg: HVACConfig) -> dict:
+    """
+    KPIs are computed over working hours only -- rows outside the
+    window defined by cfg.schedule_start_hour, cfg.schedule_end_hour,
+    and cfg.schedule_weekdays_only are excluded before any KPI is
+    calculated. This applies to both strategies' result_df (not just
+    'scheduled'), so the comparison stays apples-to-apples.
+    """
+    result_df = result_df.loc[working_hours_mask(result_df['timestamp'], cfg)]
+
+    if result_df.empty:
+        return {
+            'Total HVAC Energy (kWh)': np.nan,
+            'Peak HVAC Power (kW)': np.nan,
+            'Occupied Comfort Compliance (%)': np.nan,
+            'Occupied Discomfort (h)': np.nan,
+            'HVAC Enabled Runtime (h)': np.nan,
+            'Cooling Runtime (h)': np.nan,
+            'Unnecessary HVAC Enabled (h)': np.nan,
+        }
+
     total_energy_kWh = result_df['hvac_energy_interval_kWh'].sum()
     peak_power_kW = result_df['hvac_electric_power_W'].max() / 1000
 
