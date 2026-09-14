@@ -34,8 +34,10 @@ ROLLING_WINDOW_STEPS = 3                                       # 15 min
 MODEL_FEATURES = [
     'headcount',
     'headcount_rolling_15min',
-    'working_weekday_hour_future'
-    ]
+    'is_weekend_future', 'working_weekday_hour_future',
+    'hour_sin_future', 'hour_cos_future',
+    'day_sin_future', 'day_cos_future',
+]
 TARGET_COLUMN = 'headcount_target_15min'
 
 REQUIRED_RAW_COLUMNS = ['collecteddate', 'headcount']
