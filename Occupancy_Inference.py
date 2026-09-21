@@ -62,6 +62,7 @@ def predict(
 
     Returns one row per usable timestamp with:
         timestamp, forecast_time, occupancy_now, occupancy_forecast_15min
+        (clipped to >= 0, then rounded to the nearest whole person)
     plus, if the upload happens to contain enough trailing history:
         occupancy_actual_15min_later   (kept ONLY for optional
                                          forecast-accuracy validation --
@@ -94,7 +95,7 @@ def predict(
         'occupancy_now': usable['headcount'].values,
         'occupancy_forecast_15min': predictions,
     })
-    result['occupancy_forecast_15min'] = result['occupancy_forecast_15min'].clip(lower=0)
+    result['occupancy_forecast_15min'] = result['occupancy_forecast_15min'].clip(lower=0).round()
 
     if TARGET_COLUMN in usable.columns:
         result['occupancy_actual_15min_later'] = usable[TARGET_COLUMN].values
