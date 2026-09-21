@@ -34,6 +34,7 @@ ROLLING_WINDOW_STEPS = 3                                       # 15 min
 MODEL_FEATURES = [
     'headcount',
     'headcount_rolling_15min',
+    'headcount_trend',
     'is_weekend_future', 'working_weekday_hour_future',
     'hour_sin_future', 'hour_cos_future',
     'day_sin_future', 'day_cos_future',
@@ -148,7 +149,7 @@ def build_features(
     -------
     pd.DataFrame, sorted by time, with columns:
         target_time, forecast_time, headcount,
-        headcount_rolling_15min, is_weekend_future,
+        headcount_rolling_15min, headcount_trend, is_weekend_future,
         working_weekday_hour_future, hour_sin_future, hour_cos_future,
         day_sin_future, day_cos_future, headcount_target_15min
         (+ any other original columns, forward-filled)
@@ -158,6 +159,10 @@ def build_features(
     Rows are NOT dropped here:
       - the first ROLLING_WINDOW_STEPS rows have NaN
         'headcount_rolling_15min' (not enough history yet)
+      - the first 2 rows have NaN 'headcount_trend' (needs the prior
+        two 5-minute readings, i.e. 10 minutes of history -- less
+        strict than the rolling feature above, so it's never the
+        binding warm-up constraint)
       - the last HORIZON_STEPS rows have NaN 'headcount_target_15min'
         (the future hasn't happened yet -- this is expected and
         correct for live inference, where there IS no future value)
@@ -191,6 +196,18 @@ def build_features(
         .shift(1)
         .rolling(window=ROLLING_WINDOW_STEPS, min_periods=ROLLING_WINDOW_STEPS)
         .mean()
+    )
+
+    # headcount_trend: simple two-point momentum indicator using ONLY
+    # the two readings immediately before "now" -- t-5min vs t-10min
+    # (grid is on a 5-minute step, so shift(1)/shift(2) are exactly
+    # that). This never looks at the current or future reading, so
+    # it's safe for both training and live inference.
+    #   +1 -> occupancy was rising going into "now"
+    #   -1 -> occupancy was falling going into "now"
+    #    0 -> unchanged (or the two prior readings happen to be equal)
+    grid['headcount_trend'] = np.sign(
+        grid['headcount'].shift(1) - grid['headcount'].shift(2)
     )
 
     grid[TARGET_COLUMN] = grid['headcount'].shift(-HORIZON_STEPS)
