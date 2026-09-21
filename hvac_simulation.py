@@ -44,7 +44,7 @@ class HVACConfig:
 
     # Outdoor temperature fallback, used only if no outdoor-temperature
     # column is supplied.
-    fallback_outdoor_temp_c: float = 27.0
+    fallback_outdoor_temp_c: float = 33.0
 
     # 1R1C building parameters -- PROTOTYPE VALUES.
     # These must be calibrated against the real room before any energy
