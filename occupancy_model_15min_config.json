@@ -4,6 +4,7 @@
   "features": [
     "headcount",
     "headcount_rolling_15min",
+    "headcount_trend",
     "is_weekend_future",
     "working_weekday_hour_future",
     "hour_sin_future",
