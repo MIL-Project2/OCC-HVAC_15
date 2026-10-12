@@ -62,7 +62,7 @@ class HVACConfig:
     cooling_kp_w_per_k: float = 2000.0
     cop: float = 3.0
     fan_power_w: float = 0.0
-    initial_room_temp_c: float = 25.0
+    initial_room_temp_c: float = 33.0
 
     # Predictive controller
     predictive_occupancy_threshold: float = 1.0
