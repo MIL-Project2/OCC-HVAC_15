@@ -53,7 +53,7 @@ class HVACConfig:
     c_thermal_j_per_k: float = 1_000_000.0
 
     # Occupant heat gain
-    heat_gain_per_person_w: float = 75.0
+    heat_gain_per_person_w: float = 100.0
     other_occupied_w: float = 0.0
     other_unoccupied_w: float = 0.0
 
